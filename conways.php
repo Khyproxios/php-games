@@ -26,6 +26,7 @@ class Game {
 	private Color $background;
 	private Color $cellColor;
 	private Color $hoverColor;
+	private Color $aliveColor;
 	private Raylib $raylib;
 	private int $horizontalCount;
 	private int $verticalCount;
@@ -44,6 +45,7 @@ class Game {
 
 		$this->cellColor = new Color(0x88, 0x08, 0x08, 0xFF);
 		$this->hoverColor = new Color(0x08, 0x88, 0x08, 0xFF);
+		$this->aliveColor = new Color(0x08, 0x08, 0x88, 0xFF);
 		$this->background = new Color(0x28, 0x28, 0x28, 0xFF);
 		$this->raylib = new Raylib();
 
@@ -100,24 +102,41 @@ class Game {
 				$index = $this->getIndex($x, $y);
 				$cell = $this->cells[$index];
 
-				$aliveCount = (int)$this->isAlive($cell->topLeft)
-					+ (int)$this->isAlive($cell->topMiddle)
-					+ (int)$this->isAlive($cell->topRight)
-					+ (int)$this->isAlive($cell->left)
-					+ (int)$this->isAlive($cell->right)
-					+ (int)$this->isAlive($cell->bottomLeft)
-					+ (int)$this->isAlive($cell->bottomMiddle)
-					+ (int)$this->isAlive($cell->bottomRight);
+				// $aliveCount = (int)$this->isAlive($cell->topLeft)
+				// 	+ (int)$this->isAlive($cell->topMiddle)
+				// 	+ (int)$this->isAlive($cell->topRight)
+				// 	+ (int)$this->isAlive($cell->left)
+				// 	+ (int)$this->isAlive($cell->right)
+				// 	+ (int)$this->isAlive($cell->bottomLeft)
+				// 	+ (int)$this->isAlive($cell->bottomMiddle)
+				// 	+ (int)$this->isAlive($cell->bottomRight);
+				//
+				// $cell->alive = 1 < $aliveCount && $aliveCount < 4;
 
-				$cell->alive = 1 < $aliveCount && $aliveCount < 4;
-				$cell->hover = $this->raylib->checkCollisionPointRec($position, $cell->renderRect);
+				$mouseDown = $this->raylib->isMouseButtonPressed(MouseButton::Left);
+				$mouseOver = $this->raylib->checkCollisionPointRec($position, $cell->renderRect);
+
+				if ($mouseOver && $mouseDown) {
+					$cell->alive = !$cell->alive;
+					$cell->hover = false;
+				} else if ($mouseOver) {
+					$cell->hover = true;
+				} else {
+					$cell->hover = false;
+				}
 			}
 		}
 	}
 
 	function renderCells() {
 		foreach($this->cells as $cell) {
-			$color = $cell->hover ? $this->hoverColor : $this->cellColor;
+			$color = $this->cellColor;
+
+			if ($cell->alive) {
+				$color = $this->aliveColor;
+			} else if ($cell->hover) {
+				$color = $this->hoverColor;
+			}
 
 			$this->raylib->drawRectangleRec($cell->renderRect, $color);
 		}

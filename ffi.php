@@ -83,6 +83,16 @@ class Color {
 	}
 }
 
+enum MouseButton: int {
+	case Left = 0;
+	case Right = 1;
+	case Middle = 2;
+	case Side = 3;
+	case Extra = 4;
+	case Forward = 5;
+	case Back = 6;
+}
+
 class Raylib {
 	private \FFI $ffi;
 	private \FFI\CType $vector2Type;
@@ -126,6 +136,7 @@ class Raylib {
 
 			void DrawRectangleRec(Rectangle rec, Color color);
 			Vector2 GetMousePosition(void);
+			bool IsMouseButtonPressed(int button);
 			bool CheckCollisionPointRec(Vector2 point, Rectangle rec);
 		", "libraylib.so");
 
@@ -221,6 +232,10 @@ class Raylib {
 		$position = $this->ffi->GetMousePosition();
 
 		return new Vector2($position->x, $position->y);
+	}
+
+	public function isMouseButtonPressed(MouseButton $button): bool {
+		return $this->ffi->IsMouseButtonPressed($button->value);
 	}
 
 	public function checkCollisionPointRec(Vector2 $position, Rectangle $rectangle): bool {
