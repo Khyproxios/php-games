@@ -106,17 +106,18 @@ class Game {
 				$index = $this->getIndex($x, $y);
 				$cell = $this->cells[$index];
 
-				if ($runUpdate) {
-					$aliveCount = (int)$this->isAlive($cell->topLeft)
-						+ (int)$this->isAlive($cell->topMiddle)
-						+ (int)$this->isAlive($cell->topRight)
-						+ (int)$this->isAlive($cell->left)
-						+ (int)$this->isAlive($cell->right)
-						+ (int)$this->isAlive($cell->bottomLeft)
-						+ (int)$this->isAlive($cell->bottomMiddle)
-						+ (int)$this->isAlive($cell->bottomRight);
+				$aliveCount = (int)$this->isAlive($cell->topLeft)
+					+ (int)$this->isAlive($cell->topMiddle)
+					+ (int)$this->isAlive($cell->topRight)
+					+ (int)$this->isAlive($cell->left)
+					+ (int)$this->isAlive($cell->right)
+					+ (int)$this->isAlive($cell->bottomLeft)
+					+ (int)$this->isAlive($cell->bottomMiddle)
+					+ (int)$this->isAlive($cell->bottomRight);
 
-					$cell->aliveCount = $aliveCount;
+				$cell->aliveCount = $aliveCount;
+
+				if ($runUpdate) {
 					$cell->stage = ($cell->alive && ($aliveCount == 2 || $aliveCount == 3))
 						|| (!$cell->alive && $aliveCount == 3);
 				}
