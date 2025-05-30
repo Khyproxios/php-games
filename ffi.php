@@ -11,7 +11,7 @@ class Raylib {
 			void BeginDrawing(void);
 			void EndDrawing(void);
 			void CloseWindow(void);
-			", "/usr/local/lib64/libraylib.so");
+			", "libraylib.so");
 
 		if (!isset($raylib)) {
 			die("could not load raylib.h");
