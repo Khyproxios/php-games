@@ -6,8 +6,10 @@ include_once("ffi.php");
 
 class Cell {
 	public bool $alive = false;
+	public bool $stage = false;
 	public bool $hover = false;
 	public Rectangle $renderRect;
+	public int $aliveCount = 0;
 	public int $topLeft;
 	public int $topMiddle;
 	public int $topRight;
@@ -27,6 +29,7 @@ class Game {
 	private Color $cellColor;
 	private Color $hoverColor;
 	private Color $aliveColor;
+	private Color $infoColor;
 	private Raylib $raylib;
 	private int $horizontalCount;
 	private int $verticalCount;
@@ -46,6 +49,7 @@ class Game {
 		$this->cellColor = new Color(0x88, 0x08, 0x08, 0xFF);
 		$this->hoverColor = new Color(0x08, 0x88, 0x08, 0xFF);
 		$this->aliveColor = new Color(0x08, 0x08, 0x88, 0xFF);
+		$this->infoColor = new Color(0x00, 0x00, 0x00, 0xFF);
 		$this->background = new Color(0x28, 0x28, 0x28, 0xFF);
 		$this->raylib = new Raylib();
 
@@ -94,7 +98,7 @@ class Game {
 		return $this->cells[$index]->alive;
 	}
 
-	function updateCells() {
+	function updateCells(bool $runUpdate) {
 		$position = $this->raylib->getMousePosition();
 
 		for ($y = 0; $y < $this->verticalCount; $y++) {
@@ -102,16 +106,20 @@ class Game {
 				$index = $this->getIndex($x, $y);
 				$cell = $this->cells[$index];
 
-				// $aliveCount = (int)$this->isAlive($cell->topLeft)
-				// 	+ (int)$this->isAlive($cell->topMiddle)
-				// 	+ (int)$this->isAlive($cell->topRight)
-				// 	+ (int)$this->isAlive($cell->left)
-				// 	+ (int)$this->isAlive($cell->right)
-				// 	+ (int)$this->isAlive($cell->bottomLeft)
-				// 	+ (int)$this->isAlive($cell->bottomMiddle)
-				// 	+ (int)$this->isAlive($cell->bottomRight);
-				//
-				// $cell->alive = 1 < $aliveCount && $aliveCount < 4;
+				if ($runUpdate) {
+					$aliveCount = (int)$this->isAlive($cell->topLeft)
+						+ (int)$this->isAlive($cell->topMiddle)
+						+ (int)$this->isAlive($cell->topRight)
+						+ (int)$this->isAlive($cell->left)
+						+ (int)$this->isAlive($cell->right)
+						+ (int)$this->isAlive($cell->bottomLeft)
+						+ (int)$this->isAlive($cell->bottomMiddle)
+						+ (int)$this->isAlive($cell->bottomRight);
+
+					$cell->aliveCount = $aliveCount;
+					$cell->stage = ($cell->alive && ($aliveCount == 2 || $aliveCount == 3))
+						|| (!$cell->alive && $aliveCount == 3);
+				}
 
 				$mouseDown = $this->raylib->isMouseButtonPressed(MouseButton::Left);
 				$mouseOver = $this->raylib->checkCollisionPointRec($position, $cell->renderRect);
@@ -126,6 +134,12 @@ class Game {
 				}
 			}
 		}
+
+		if ($runUpdate) {
+			foreach($this->cells as $cell) {
+				$cell->alive = $cell->stage;
+			}
+		}
 	}
 
 	function renderCells() {
@@ -138,13 +152,34 @@ class Game {
 				$color = $this->hoverColor;
 			}
 
+			$aliveCount = $cell->aliveCount;
+			$x = $cell->renderRect->x;
+			$y = $cell->renderRect->y;
 			$this->raylib->drawRectangleRec($cell->renderRect, $color);
+			$this->raylib->drawText("$aliveCount", $x + 10, $y + 10, 20, $this->infoColor);
 		}
 	}
 
 	function run() {
+		$updateThreshold = 0.125;
+		$timeElapsed = 0;
+		$skipUpdate = true;
+
 		while (!$this->raylib->windowShouldClose()) {
-			$this->updateCells();
+			$deltaTime = $this->raylib->getFrameTime();
+			$timeElapsed = $timeElapsed + $deltaTime;
+
+			$runUpdate = !$skipUpdate && $updateThreshold <= $timeElapsed;
+
+			if ($this->raylib->isKeyPressed(KeyboardKey::Space)) {
+				$skipUpdate = !$skipUpdate;
+			}
+
+			if ($runUpdate) {
+				$timeElapsed = 0;
+			}
+
+			$this->updateCells($runUpdate);
 
 			$this->raylib->beginDrawing();
 			$this->raylib->clearBackground($this->background);
