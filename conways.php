@@ -156,8 +156,12 @@ class Game {
 			$aliveCount = $cell->aliveCount;
 			$x = $cell->renderRect->x;
 			$y = $cell->renderRect->y;
+			$text = "$aliveCount";
+			$fontSize = $this->raylib->measureTextEx($this->raylib->defaultFont, $text, 20, 2);
+			$fontX = $x + ($cell->renderRect->width / 2) - ($fontSize->width / 2);
+			$fontY = $y + ($cell->renderRect->height / 2) - ($fontSize->height / 2);
 			$this->raylib->drawRectangleRec($cell->renderRect, $color);
-			$this->raylib->drawText("$aliveCount", $x + 10, $y + 10, 20, $this->infoColor);
+			$this->raylib->drawText($text, $fontX, $fontY, 20, $this->infoColor);
 		}
 	}
 

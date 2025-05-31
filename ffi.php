@@ -5,82 +5,34 @@ const ZERO = new Vector2(0, 0);
 const BLACK = new Color(0, 0, 0, 255);
 
 class Vector2 {
-	public int $x;
-	public int $y;
-
-	public function __construct(int $x, int $y) {
-		$this->x = $x;
-		$this->y = $y;
-	}
+	public function __construct(
+		public int $x,
+		public int $y
+	) {}
 }
 
 class Size {
-	public int $width;
-	public int $height;
-
-	public function __construct(int $width, int $height) {
-		$this->width = $width;
-		$this->height = $height;
-	}
+	public function __construct(
+		public int $width,
+		public int $height
+	) {}
 }
 
 class Rectangle {
-	public int $x;
-	public int $y;
-	public int $width;
-	public int $height;
-
-	public function __construct(int $x, int $y, int $width, int $height) {
-		$this->x = $x;
-		$this->y = $y;
-		$this->width = $width;
-		$this->height = $height;
-	}
+	public function __construct(
+		public int $x, 
+		public int $y,
+		public int $width,
+		public int $height
+	) {}
 }
 
 class Color {
-	public int $r {
-		get {
-			return $this->r;
-		}
-		set (int $r) {
-			$this->r = $r;
-		}
-	}
-
-	public int $g {
-		get {
-			return $this->g;
-		}
-		set (int $g) {
-			$this->g = $g;
-		}
-	}
-
-	public int $b {
-		get {
-			return $this->b;
-		}
-		set (int $b) {
-			$this->b = $b;
-		}	
-	}
-
-	public int $a {
-		get {
-			return $this->a;
-		}
-		set (int $a) {
-			$this->a = $a;
-		}
-	}
-
-	function __construct(int $r, int $g, int $b, int $a) {
-		$this->r = $r;
-		$this->g = $g;
-		$this->b = $b;
-		$this->a = $a;
-	}
+	function __construct(
+		public int $r,
+		public int $g,
+		public int $b,
+		public int $a) {}
 }
 
 enum MouseButton: int {
@@ -210,12 +162,61 @@ enum KeyboardKey: int {
     case VolumeDown     = 25;       // Key: Android volume down button
 };
 
+class Image {
+	public function __construct(
+		public mixed $data,
+		public int $width,
+		public int $height,
+		public int $mipmaps,
+		public int $format
+	) {}
+}
+
+class Texture {
+	public function __construct(
+		public int $id,
+		public int $width,
+		public int $height,
+		public int $mipmaps,
+		public int $format
+	) {}
+}
+
+class GlyphInfo {
+	public function __construct(
+		public int $value,
+		public int $offsetX,
+		public int $offsetY,
+		public int $advanceX,
+		public Image $image
+	) {}
+}
+
+class Font {
+	public function __construct(
+		public int $baseSize,
+		public int $glyphCount,
+		public int $glyphPadding,
+		public Texture $texture,
+		public array $recs,
+		public array $glyphs
+	) {}
+}
+
 class Raylib {
 	private \FFI $ffi;
 	private \FFI\CType $vector2Type;
 	private \FFI\CType $sizeType;
 	private \FFI\CType $rectangleType;
+	private \FFI\CType $rectanglePointerType;
 	private \FFI\CType $colorType;
+	private \FFI\CType $imageType;
+	private \FFI\CType $textureType;
+	private \FFI\CType $glyphInfoType;
+	private \FFI\CType $glyphInfoPointerType;
+	private \FFI\CType $fontType;
+
+	public Font $defaultFont;
 
 	function __construct() {
 		$raylib = \FFI::cdef("
@@ -243,6 +244,43 @@ class Raylib {
 				float height;
 			} Rectangle;
 
+			typedef struct Image {
+				void *data;             // Image raw data
+				int width;              // Image base width
+				int height;             // Image base height
+				int mipmaps;            // Mipmap levels, 1 by default
+				int format;             // Data format (PixelFormat type)
+			} Image;
+
+			// Texture, tex data stored in GPU memory (VRAM)
+			typedef struct Texture {
+				unsigned int id;        // OpenGL texture id
+				int width;              // Texture base width
+				int height;             // Texture base height
+				int mipmaps;            // Mipmap levels, 1 by default
+				int format;             // Data format (PixelFormat type)
+			} Texture;
+
+			typedef Texture Texture2D;
+
+			typedef struct GlyphInfo {
+				int value;              // Character value (Unicode)
+				int offsetX;            // Character offset X when drawing
+				int offsetY;            // Character offset Y when drawing
+				int advanceX;           // Character advance position X
+				Image image;            // Character image data
+			} GlyphInfo;
+
+			// Font, font texture and GlyphInfo array data
+			typedef struct Font {
+				int baseSize;           // Base size (default chars height)
+				int glyphCount;         // Number of glyph characters
+				int glyphPadding;       // Padding around the glyph characters
+				Texture2D texture;      // Texture atlas containing the glyphs
+				Rectangle *recs;        // Rectangles in texture for the glyphs
+				GlyphInfo *glyphs;      // Glyphs info data
+			} Font;
+
 			void InitWindow(int width, int height, const char *title);
 			void SetTargetFPS(int fps);
 			bool WindowShouldClose(void);
@@ -252,6 +290,8 @@ class Raylib {
 			void EndDrawing(void);
 			void CloseWindow(void);
 
+			Font GetFontDefault(void);
+			Size MeasureTextEx(Font font, const char *text, float fontSize, float spacing);
 			void DrawText(const char *text, int posX, int posY, int fontSize, Color color);
 			void DrawRectangleRec(Rectangle rec, Color color);
 			Vector2 GetMousePosition(void);
@@ -269,6 +309,14 @@ class Raylib {
 		$this->vector2Type = $this->ffi->type("struct Vector2");
 		$this->sizeType = $this->ffi->type("struct Size");
 		$this->rectangleType = $this->ffi->type("struct Rectangle");
+		$this->rectanglePointerType = $this->ffi->type("struct Rectangle*");
+		$this->imageType = $this->ffi->type("struct Image");
+		$this->textureType = $this->ffi->type("struct Texture");
+		$this->glyphInfoType = $this->ffi->type("struct GlyphInfo");
+		$this->glyphInfoPointerType = $this->ffi->type("struct GlyphInfo*");
+		$this->fontType = $this->ffi->type("struct Font");
+
+		$this->defaultFont = $this->getFontDefault();
 	}
 
 	function convertVector2(Vector2 $vector2): \FFI\CData {
@@ -311,6 +359,145 @@ class Raylib {
 		return $convertedColor;
 	}
 
+	function convertFFITexture(\FFI\CData $texture): Texture {
+		$convertedTexture = new Texture(
+			$texture->id,
+			$texture->width,
+			$texture->height,
+			$texture->mipmaps,
+			$texture->format
+		);
+
+		return $convertedTexture;
+	}
+
+	function convertTexture(Texture $texture): \FFI\CData {
+		$convertedTexture = $this->ffi->new($this->textureType);
+
+		$convertedTexture->id = $texture->id;
+		$convertedTexture->width = $texture->width;
+		$convertedTexture->height = $texture->height;
+		$convertedTexture->mipmaps = $texture->mipmaps;
+		$convertedTexture->format = $texture->format;
+
+		return $convertedTexture;
+	}
+
+	function convertImage(Image $image): \FFI\CData {
+		$convertedImage = $this->ffi->new($this->imageType);
+
+		$convertedImage->data = $image->data;
+		$convertedImage->width = $image->width;
+		$convertedImage->height = $image->height;
+		$convertedImage->mipmaps = $image->mipmaps;
+		$convertedImage->format = $image->format;
+
+		return $convertedImage;
+	}
+
+	function convertGlyphInfo(GlyphInfo $glyphInfo): \FFI\CData {
+		$convertedGlyphInfo = $this->ffi->new($this->glyphInfoType);
+
+		$convertedGlyphInfo->value = $glyphInfo->value;
+		$convertedGlyphInfo->offsetX = $glyphInfo->value;
+		$convertedGlyphInfo->offsetY = $glyphInfo->value;
+		$convertedGlyphInfo->advanceX = $glyphInfo->value;
+		$convertedGlyphInfo->image = $this->convertImage($glyphInfo->image);
+
+		return $convertedGlyphInfo;
+	}
+
+	function convertFFIFont(\FFI\CData $font): Font {
+		$rects = [];
+		$glyphs = [];
+
+		if (!is_null($font->recs)) {
+			foreach($font->recs as $rect) {
+				$convertedRect = new Rectangle(
+					$rect->x,
+					$rect->y,
+					$rect->width,
+					$rect->height
+				);
+
+				array_push($glyphs, $convertedRect);
+			}
+		}
+
+		if (!is_null($font->glyphs)) {
+			foreach($font->glyphs as $glyph) {
+				$image = $glyph->image;
+				$convertedImage = new Image (
+					$image->data,
+					$image->width,
+					$image->height,
+					$image->mipmaps,
+					$image->format
+				);
+				$convertedGlyphInfo = new GlyphInfo(
+					$glyph->value,
+					$glyph->offsetX,
+					$glyph->offsetY,
+					$glyph->advanceX,
+					$convertedImage
+				);
+
+				array_push($glyphs, $convertedGlyphInfo);
+			}
+		}
+
+		$convertedFont = new Font(
+			$font->baseSize,
+			$font->glyphCount,
+			$font->glyphPadding,
+			$this->convertFFITexture($font->texture),
+			$rects,
+			$glyphs
+		);
+
+		return $convertedFont;
+	}
+
+	function convertFont(Font $font): \FFI\CData {
+		$convertedFont = $this->ffi->new($this->fontType);
+
+		$convertedFont->baseSize = $font->baseSize;
+		$convertedFont->glyphCount = $font->glyphCount;
+		$convertedFont->glyphPadding = $font->glyphPadding;
+		$convertedFont->texture = $this->convertTexture($font->texture);
+
+		$rectsCount = count($font->recs);
+
+		if (0 < $rectsCount) {
+			$rects = $this->ffi->new("Rectangle[$rectsCount]");
+
+			foreach($font->recs as $rect) {
+				$convertedRect = $this->convertRectangle($rect);
+
+				array_push($rects, $convertedRect);
+			}
+
+			\FFI::memcpy($font->recs, $rects, $rectsCount);
+		}
+
+		$glyphsCount = count($font->glyphs);
+
+		if (0 < $glyphsCount) {
+			$glyphs = $this->ffi->new("GlyphInfo[$glyphsCount]");
+
+			foreach($font->glyphs as $glyphInfo) {
+				$convertedGlyphInfo = $this->convertGlyphInfo($glyphInfo);
+
+				array_push($glyphs, $convertedGlyphInfo);
+			}
+
+			// TODO: memcpy the memory over
+			\FFI::memcpy($font->glyphs, $glyphs, $glyphsCount);
+		}
+
+		return $convertedFont;
+	}
+
 	public function initWindow(int $width, int $height, string $title) {
 		$this->ffi->InitWindow($width, $height, $title);
 	}
@@ -343,6 +530,18 @@ class Raylib {
 
 	public function closeWindow() {
 		$this->ffi->CloseWindow();
+	}
+
+	public function getFontDefault(): Font {
+		$font = $this->ffi->GetFontDefault();
+
+		return $this->convertFFIFont($font);
+	}
+
+	public function measureTextEx(Font $font, string $text, float $fontSize, float $spacing) {
+		$convertedFont = $this->convertFont($font);
+
+		return $this->ffi->MeasureTextEx($convertedFont, $text, $fontSize, $spacing);
 	}
 
 	public function drawText(string $text, int $posX, int $posY, int $fontSize, Color $color) {
